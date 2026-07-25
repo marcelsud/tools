@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { runStructuredSubagent } from "@oh-my-pi/pi-coding-agent/task/structured-subagent";
 import type { Tool, ToolSession } from "@oh-my-pi/pi-coding-agent/tools";
 import { AgentBudget } from "./budget";
@@ -9,6 +12,7 @@ import type {
 	BudgetSnapshot,
 	CapabilityMode,
 	ParallelJob,
+	ShellResult,
 	ToolCallResult,
 	ToolFn,
 	ToolProxy,
@@ -136,6 +140,30 @@ function stripToolNotices(text: string, details: unknown): string {
 	return output.trim() === "(no output)" ? "" : output;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === "object";
+}
+
+/**
+ * omp 17.1.3 tags actual cuts on `details.meta`: total-length/middle elision as
+ * `meta.truncation`, and per-line column cuts as `meta.limits.columnTruncated`
+ * only when `columnTruncatedLines > 0`. Presence is the signal — do not infer
+ * from the visible ellipsis.
+ */
+function toolOutputWasTruncated(details: unknown): boolean {
+	if (!isRecord(details)) return false;
+	const meta = details.meta;
+	if (!isRecord(meta)) return false;
+	if (meta.truncation !== undefined) return true;
+	const limits = meta.limits;
+	return isRecord(limits) && limits.columnTruncated !== undefined;
+}
+
+/** Single-quote wrap so generated paths never expand under the bash wrapper. */
+function shellQuote(value: string): string {
+	return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
 export class WorkflowHostImpl implements WorkflowHost {
 	readonly args: unknown;
 	readonly cwd: string;
@@ -182,7 +210,49 @@ export class WorkflowHostImpl implements WorkflowHost {
 		const isError =
 			result.isError === true ||
 			(details !== null && typeof details === "object" && (details as { isError?: unknown }).isError === true);
-		return { text: stripToolNotices(raw, details), details, isError };
+		return { text: stripToolNotices(raw, details), details, isError, truncated: toolOutputWasTruncated(details) };
+	}
+
+	/**
+	 * Complete command streams via the constructed `bash` tool, capturing through
+	 * temp files so display truncation never touches the bytes the script parses.
+	 */
+	async sh(command: string): Promise<ShellResult> {
+		const bash = this.#options.tools.find(tool => tool.name === "bash");
+		if (!bash) {
+			throw new Error(
+				`tool \`bash\` is not available in this run (built: ${this.#options.tools.map(t => t.name).join(", ")})`,
+			);
+		}
+
+		const dir = await mkdtemp(join(tmpdir(), "wf-sh-"));
+		const commandPath = join(dir, "command.sh");
+		const stdoutPath = join(dir, "stdout");
+		const stderrPath = join(dir, "stderr");
+		try {
+			await writeFile(commandPath, command, "utf8");
+			const wrapper =
+				`bash -- ${shellQuote(commandPath)} > ${shellQuote(stdoutPath)} 2> ${shellQuote(stderrPath)}`;
+			const result = await this.#callTool(bash, { command: wrapper, i: "wf.sh" });
+			const stdout = await readFile(stdoutPath, "utf8");
+			const stderr = await readFile(stderrPath, "utf8");
+
+			if (!result.isError) {
+				return { stdout, stderr, exitCode: 0 };
+			}
+
+			const exitCode =
+				isRecord(result.details) && typeof result.details.exitCode === "number"
+					? result.details.exitCode
+					: undefined;
+			if (exitCode === undefined) {
+				const detail = result.text.trim() || "bash failed without an exit code";
+				throw new Error(`wf.sh infrastructure failure: ${detail}`);
+			}
+			return { stdout, stderr, exitCode };
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
 	}
 
 	get currentPhase(): string | undefined {

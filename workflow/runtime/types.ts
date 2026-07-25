@@ -82,13 +82,30 @@ export interface BudgetSnapshot {
 	remaining: number;
 }
 
-/** What a built-in returns to a script: the text the agent would see, plus its structured details. */
+/** What a built-in returns to a script: display-shaped text plus structured details. */
 export interface ToolCallResult {
+	/**
+	 * Display-shaped tool output. May be total-length truncated and/or per-line
+	 * column-truncated; check {@link ToolCallResult.truncated} before parsing it.
+	 */
 	text: string;
 	/** Tool-specific structured payload, e.g. `bash` reports `{ exitCode }` on failure. */
 	details: unknown;
 	/** True when the tool reported failure. `bash` sets it for any non-zero exit. */
 	isError: boolean;
+	/**
+	 * True when `text` lost bytes to total-length or per-line column truncation.
+	 * Mandatory guard before machine-parsing `text`; use {@link WorkflowHost.sh}
+	 * when a script needs complete command streams.
+	 */
+	truncated: boolean;
+}
+
+/** Complete UTF-8 streams from {@link WorkflowHost.sh}. */
+export interface ShellResult {
+	stdout: string;
+	stderr: string;
+	exitCode: number;
 }
 
 export type ToolFn = (args: unknown) => Promise<ToolCallResult>;
@@ -164,17 +181,31 @@ export interface WorkflowHost {
 	/**
 	 * omp's own built-in tools — `read`, `grep`, `glob`, `bash`, `edit`, `write`,
 	 * `ast_edit`, `browser`, `debug`, `eval`, `task`, `todo`, `web_search`, `hub`
-	 * — callable directly from the script:
+	 * — callable directly from the script. Each returns display-shaped
+	 * {@link ToolCallResult} text that may be truncated:
 	 *
 	 * ```ts
-	 * const { text, isError } = await wf.tool.bash({ command: "git diff HEAD", i: "Reading diff" });
+	 * const { text, isError, truncated } = await wf.tool.bash({
+	 *   command: "git status --short",
+	 *   i: "Listing dirty paths",
+	 * });
+	 * if (truncated) throw new Error("bash output was truncated; refuse to parse");
 	 * ```
 	 *
-	 * This is how a script computes deterministic inputs — a work list, a diff, a
-	 * test result — instead of paying an agent to go discover them. `Object.keys`
-	 * lists what this run can call.
+	 * `Object.keys` enumerates those display-shaped built-ins. For complete
+	 * command stdout/stderr that a script will machine-parse, use
+	 * {@link WorkflowHost.sh} instead.
 	 */
 	readonly tool: ToolProxy;
+
+	/**
+	 * Run `command` in {@link WorkflowHost.cwd} and return complete UTF-8
+	 * `stdout`/`stderr` plus the real `exitCode`. Resolves for normal non-zero
+	 * exits; empty commands return empty streams with exit code 0. Throws on
+	 * timeout, cancellation, or other infrastructure failure without a real
+	 * exit code. No sandbox — trusted workflow code only.
+	 */
+	sh(command: string): Promise<ShellResult>;
 }
 
 /** Signature of a workflow module's default export. */

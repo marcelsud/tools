@@ -107,9 +107,9 @@ export const meta: WorkflowMeta = {
 };
 
 export default async function (wf: WorkflowHost, args: unknown) {
-  // Compute the work list with omp's own tools, deterministically.
-  const { text, isError } = await wf.tool.bash({ command: "git diff HEAD", i: "Reading diff" });
-  if (isError) throw new Error(text);
+  // Complete command streams for deterministic parsing — not display-shaped bash.
+  const { stdout, exitCode } = await wf.sh("git diff HEAD");
+  if (exitCode !== 0) throw new Error(stdout);
 
   wf.phase("Gather");
   const results = await wf.parallel(
@@ -126,28 +126,40 @@ export default async function (wf: WorkflowHost, args: unknown) {
 ```
 
 Host API: `agent`, `parallel`, `phase`, `log`, `complete`, `budget`, `json`, `fingerprint`,
-plus `args`, `cwd`, and `tool`. Every call blocks; `parallel` is the only concurrency and it
-is a barrier.
+`sh`, plus `args`, `cwd`, and `tool`. Every call blocks; `parallel` is the only agent-call
+concurrency and it is a barrier. Scripts may still `Promise.all` host tools/`sh` themselves.
 
-### `wf.tool` — omp's built-ins, callable from the script
+### `wf.tool` and `wf.sh`
 
 A run builds the same built-in registry the agent loop would (`read`, `grep`, `glob`, `bash`,
 `edit`, `write`, `ast_edit`, `eval`, `task`, `todo`, `web_search`, `hub`, `browser`, `debug`).
-There is no bespoke `exec` or `gitDiffSince`: anything the agent can do, the script can do,
-deterministically and without spending budget.
+`Object.keys(wf.tool)` enumerates those **display-shaped** built-ins. There is no bespoke
+`exec` or `gitDiffSince`: anything the agent can do, the script can do, without spending
+budget.
 
 ```ts
 const hits = await wf.tool.grep({ pattern: "TODO\\(perf\\)", path: "src", i: "Finding work" });
 const run  = await wf.tool.bash({ command: "bun test", i: "Running tests" });
 if (run.isError) wf.log(`tests failed with ${(run.details as { exitCode?: number }).exitCode}`);
+if (run.truncated) throw new Error("bash output was truncated; refuse to parse");
+
+// Machine-parsed commands must use complete streams:
+const { stdout, stderr, exitCode } = await wf.sh("git diff --no-color HEAD");
+if (exitCode !== 0) throw new Error(stderr.trim() || stdout.trim() || `exit ${exitCode}`);
 ```
 
-Each call returns `{ text, details, isError }`. Two `bash` display affordances are undone so
-`text` is parseable: the `Wall time:`/`Command exited with code` footers are stripped (both
-values remain on `details`), and the literal `(no output)` placeholder becomes `""` — without
-that, an empty `git diff` reads as a dirty tree.
+Each `wf.tool` call returns `{ text, details, isError, truncated }`. `text` remains
+display-shaped: it may lose bytes to total-length or per-line column truncation, so scripts
+must reject/avoid truncated text before parsing it. Two `bash` display affordances are still
+undone so `text` is cleaner for agents: the `Wall time:`/`Command exited with code` footers
+are stripped (both values remain on `details`), and the literal `(no output)` placeholder
+becomes `""`.
 
-Every name in the list above always exists on `wf.tool`. One this run's settings did not
+`wf.sh(command)` is the supported path for complete UTF-8 `stdout`/`stderr` plus the real
+`exitCode`. It runs in `wf.cwd`, resolves for normal non-zero exits, and throws on timeout,
+cancellation, or other infrastructure failure without a real exit code.
+
+Every name in the built-in list always exists on `wf.tool`. One this run's settings did not
 construct throws and names itself rather than being silently absent.
 
 ### Rules that are load-bearing
