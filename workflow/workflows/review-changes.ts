@@ -71,18 +71,17 @@ export default async function reviewChanges(wf: WorkflowHost, args: unknown): Pr
 		throw new Error('review-changes needs args.target, e.g. {"target":"origin/main...HEAD"}');
 	}
 
-	// The diff is deterministic data, so the script computes it once with omp's own
-	// bash tool and hands it over. Asking read-only children to "go run git diff"
-	// gives them a job their tool set cannot do: they burn the budget spelunking
-	// .git objects by hand.
-	const diffCall = await wf.tool.bash({
-		command: `git diff --no-color ${target}`,
-		i: "Reading the diff under review",
-	});
-	if (diffCall.isError) {
-		throw new Error(`git diff ${target} failed: ${diffCall.text.trim()}`);
+	// The diff is deterministic data, so the script computes it once with complete
+	// streams via wf.sh and hands it over. Asking read-only children to "go run
+	// git diff" gives them a job their tool set cannot do: they burn the budget
+	// spelunking .git objects by hand. Display-shaped bash tool text is not safe
+	// to machine-parse (per-line / total-length truncation).
+	const diffCall = await wf.sh(`git diff --no-color ${target}`);
+	if (diffCall.exitCode !== 0) {
+		const detail = diffCall.stderr.trim() || diffCall.stdout.trim() || `exit ${diffCall.exitCode}`;
+		throw new Error(`git diff ${target} failed: ${detail}`);
 	}
-	const rawDiff = diffCall.text;
+	const rawDiff = diffCall.stdout;
 	if (rawDiff.trim() === "") {
 		wf.complete({ target, summary: `No changes in ${target}.`, confirmed: [] });
 	}

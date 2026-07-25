@@ -10,7 +10,7 @@ workflow/
     types.ts            authoring surface (WorkflowHost) — the contract scripts see
     session.ts          synthetic ToolSession; three hardening settings, all load-bearing
     budget.ts           absolute agent-call cap, atomic panel admission
-    host.ts             agent/parallel/phase/log/complete + wf.tool proxy + progress
+    host.ts             agent/parallel/phase/log/complete/sh + wf.tool proxy + progress
     registry.ts         discover + import definitions across bundled/user/project
     run.ts              runWorkflow (real) and validateWorkflow (canned dry run)
   workflows/            bundled definitions: review-changes, ship-change
@@ -62,9 +62,12 @@ Use a cheap model (`grok-composer-2.5-fast`) while iterating; the pinned per-rol
   symlink to `workflow/index.ts`.
 - **Never `process.cwd()` in a workflow** — that is the omp process, not the run's workspace.
   Use `wf.cwd`.
-- **`bash` output is formatted for display.** The host strips the `Wall time:` /
-  `Command exited with code` footers and maps the literal `(no output)` to `""`. Removing
-  that normalization makes an empty `git diff` read as a dirty tree.
+- **`wf.tool.bash` is display-shaped; `wf.sh` is complete.** The host strips the
+  `Wall time:` / `Command exited with code` footers and maps the literal `(no output)` to
+  `""`, and sets `truncated` when omp reports total-length or per-line column cuts. Scripts
+  that machine-parse command output must use `wf.sh(command)` for complete stdout/stderr —
+  never parse truncated `wf.tool.bash` text. Removing the notice normalization still makes an
+  empty `git diff` read as a dirty tree.
 - **Capability restriction depends on three session settings** (`tools.xdev: false`,
   `enableMCP: false`, `customToolPaths: []`). Drop any one and a "read-only" child silently
   regains `write` or MCP mutators. See `runtime/session.ts` for the verified reasoning; do

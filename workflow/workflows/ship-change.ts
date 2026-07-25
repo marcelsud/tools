@@ -184,14 +184,16 @@ function readBlockers(wf: WorkflowHost, result: AgentResult | null): Blocker[] {
 /** Working-tree state as ground truth, rather than whatever the implementer claims it did. */
 async function worktreeState(wf: WorkflowHost): Promise<{ diff: string; untracked: string[]; changed: boolean }> {
 	const [diffCall, untrackedCall] = await Promise.all([
-		wf.tool.bash({ command: "git diff --no-color HEAD", i: "Reading uncommitted diff" }),
-		wf.tool.bash({ command: "git ls-files --others --exclude-standard", i: "Listing new files" }),
+		wf.sh("git diff --no-color HEAD"),
+		wf.sh("git ls-files --others --exclude-standard"),
 	]);
-	if (diffCall.isError || untrackedCall.isError) {
-		throw new Error(`git inspection failed: ${(diffCall.isError ? diffCall : untrackedCall).text.trim()}`);
+	if (diffCall.exitCode !== 0 || untrackedCall.exitCode !== 0) {
+		const failed = diffCall.exitCode !== 0 ? diffCall : untrackedCall;
+		const detail = failed.stderr.trim() || failed.stdout.trim() || `exit ${failed.exitCode}`;
+		throw new Error(`git inspection failed: ${detail}`);
 	}
-	const diff = diffCall.text;
-	const untracked = untrackedCall.text.split("\n").filter(line => line.trim() !== "");
+	const diff = diffCall.stdout;
+	const untracked = untrackedCall.stdout.split("\n").filter(line => line.trim() !== "");
 	return { diff, untracked, changed: diff.trim() !== "" || untracked.length > 0 };
 }
 

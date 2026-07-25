@@ -200,7 +200,12 @@ export async function validateWorkflow(
 	// no output, so the script's happy path stays reachable.
 	const dryTool: Record<string, ToolFn> = {};
 	for (const name of WORKFLOW_TOOL_NAMES) {
-		dryTool[name] = async (): Promise<ToolCallResult> => ({ text: "", details: undefined, isError: false });
+		dryTool[name] = async (): Promise<ToolCallResult> => ({
+			text: "",
+			details: undefined,
+			isError: false,
+			truncated: false,
+		});
 	}
 
 	const host: WorkflowHost = {
@@ -223,6 +228,7 @@ export async function validateWorkflow(
 		json: value => JSON.stringify(value) ?? "null",
 		fingerprint: text => `dry-${text.length}`,
 		tool: dryTool as ToolProxy,
+		sh: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
 	};
 
 	const finish = (outcome: Omit<ValidateOutcome, "warnings">): ValidateOutcome => {
