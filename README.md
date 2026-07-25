@@ -43,8 +43,19 @@ commits.
 
 ### Install
 
-The loader scans `<config>/tools/<name>/index.ts`, and `entry.isDirectory()` rejects a
-symlinked directory — so link the *entry file*, not the folder:
+Requires [omp](https://omp.sh) on your PATH and Bun.
+
+```bash
+git clone https://github.com/marcelsud/tools.git && cd tools
+./scripts/setup.sh                     # links @oh-my-pi against your installed omp
+```
+
+`setup.sh` points `node_modules/@oh-my-pi` at the same package the `omp` on your PATH runs
+from, so the tools always typecheck against the runtime that will load them — no second copy.
+
+Then register the tool. The loader scans `<config>/tools/<name>/index.ts`, and
+`entry.isDirectory()` rejects a symlinked directory — so link the *entry file*, not the
+folder:
 
 ```bash
 mkdir -p ~/.omp/agent/tools/workflow

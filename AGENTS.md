@@ -20,9 +20,13 @@ scripts/demo-repo.sh    recreates the verification fixture
 ## Verify
 
 ```bash
+scripts/setup.sh                       # only on a fresh clone: links @oh-my-pi
 bunx tsc --noEmit -p tsconfig.json     # must be clean
 scripts/demo-repo.sh                   # fixture at /tmp/wf-demo, tree clean, 3 known bugs
 ```
+
+`node_modules/@oh-my-pi/*` are symlinks to your globally installed omp and are gitignored, so
+a fresh clone needs `setup.sh` before anything typechecks.
 
 Then exercise a workflow (see "Dev loop" below). `review-changes` on the fixture should
 confirm the off-by-one, the unbounded discount and the uncaught `JSON.parse`. `ship-change`
