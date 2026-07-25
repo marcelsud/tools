@@ -1,0 +1,9 @@
+{
+  "name": "omp-tools",
+  "private": true,
+  "type": "module",
+  "description": "Custom tools for omp (oh-my-pi)",
+  "devDependencies": {
+    "@oh-my-pi/pi-coding-agent": "*"
+  }
+}
