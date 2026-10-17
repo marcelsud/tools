@@ -1,7 +1,12 @@
 # Repo context
 
-Custom tools for omp (oh-my-pi). One tool so far: **`workflow`** — deterministic multi-agent
-orchestration. `README.md` is the reference; this file is what you need before touching code.
+Custom tools for omp (oh-my-pi), plus standalone CLIs. **`workflow`** provides deterministic
+multi-agent orchestration; **`viewdiff`** is a local Go/browser Git diff viewer.
+`README.md` is the reference; this file is what you need before touching code.
+
+`viewdiff/` is an independent Go module with embedded browser assets in `web/`.
+For ViewDiff changes, run `make -C viewdiff check` (Go vet, race tests, and Node.js
+tests) and `make -C viewdiff build`. Its generated `bin/` directory is gitignored.
 
 ```
 workflow/

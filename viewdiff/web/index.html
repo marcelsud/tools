@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>viewdiff</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2324292f'/%3E%3Cpath d='M8 11h7M11.5 7.5v7M18 21h7' stroke='%23fff' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="preferences.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h6M8 4v6M14 17h6"/></svg><strong>viewdiff</strong><span class="local-badge">LOCAL</span></div>
+    <div id="repo-name" class="repo-name"></div>
+    <div class="header-actions"><span class="readonly">Read-only</span><button id="theme" class="icon-button" title="Toggle light/dark theme" aria-label="Toggle light/dark theme">◐</button><button id="refresh" class="button">Refresh</button></div>
+  </header>
+  <section class="comparison" aria-label="Comparison settings">
+    <div class="comparison-controls">
+      <label class="control"><span>Compare</span><select id="mode"><option value="branch">Branch + local changes</option><option value="working">Working tree</option><option value="staged">Staged changes</option></select></label>
+      <form id="base-form"><label class="control"><span>Base</span><input id="base" type="text" spellcheck="false" aria-label="Base reference"></label><button class="button" type="submit">Compare</button></form>
+      <span id="branch" class="branch-label"></span>
+    </div>
+    <div class="summary-row"><div><strong id="file-count">Loading changes…</strong><span id="totals" class="totals"></span><span id="comparison-label" class="comparison-label"></span></div><div class="view-controls"><button id="sidebar-toggle" class="button" aria-label="Toggle file sidebar">Files</button><div class="segmented" aria-label="Diff layout"><button id="unified" aria-pressed="false">Unified</button><button id="split" aria-pressed="true">Split</button></div><label class="wrap-control"><input id="wrap" type="checkbox"> Wrap</label><button id="collapse-all" class="button">Collapse all</button></div></div>
+  </section>
+  <div id="error" class="error" role="alert" hidden></div>
+  <main class="workspace">
+    <aside id="sidebar" class="sidebar" aria-label="Changed files">
+      <div class="sidebar-heading"><strong>Changed files</strong><span id="review-count"></span></div>
+      <input id="filter" class="filter" type="search" placeholder="Filter files…" aria-label="Filter files">
+      <nav id="file-tree" class="file-tree"></nav>
+      <div class="sidebar-footer">↑ / ↓ files · / filter · U unified · S split</div>
+    </aside>
+    <section id="diffs" class="diffs" aria-label="File diffs" aria-live="polite"></section>
+  </main>
+</body>
+</html>

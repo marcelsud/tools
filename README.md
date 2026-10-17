@@ -1,5 +1,25 @@
 # omp custom tools
 
+## `viewdiff` — local Git diff viewer
+
+A standalone Go CLI for reviewing branch, working-tree, and staged diffs in a
+local browser. Includes split and unified layouts, expandable context, file
+filters, viewed markers, persistent display preferences, and optional review notes.
+
+Requires Go 1.24 or newer and Git. Build and install independently of omp:
+
+```sh
+make -C viewdiff install                # installs to ~/.local/bin
+cd /path/to/your/repo
+viewdiff origin/main HEAD              # committed branch changes
+viewdiff --working                     # staged, unstaged, and untracked changes
+```
+
+The default browser is Island on macOS. Use `viewdiff --no-open` to open the
+printed local URL in another browser. See [viewdiff/README.md](viewdiff/README.md)
+for usage and review notes. Run `make -C viewdiff check` to verify the tool
+(also requires Node.js).
+
 ## `workflow` — deterministic multi-agent workflows
 
 A workflow is a saved script that fans out self-contained subagents, barriers on their
