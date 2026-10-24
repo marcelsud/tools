@@ -1,12 +1,17 @@
 # Repo context
 
 Custom tools for omp (oh-my-pi), plus standalone CLIs. **`workflow`** provides deterministic
-multi-agent orchestration; **`viewdiff`** is a local Go/browser Git diff viewer.
+multi-agent orchestration; **`viewdiff`** is a local Go/browser Git diff viewer, and
+**`mdview`** is a local Markdown viewer and browser editor.
 `README.md` is the reference; this file is what you need before touching code.
 
 `viewdiff/` is an independent Go module with embedded browser assets in `web/`.
 For ViewDiff changes, run `make -C viewdiff check` (Go vet, race tests, and Node.js
 tests) and `make -C viewdiff build`. Its generated `bin/` directory is gitignored.
+
+`mdview/` is an independent Go 1.25 module with embedded assets, Markdown editing,
+and optional save events. Run `make -C mdview check` (Go vet, race tests, and Node.js
+tests) and `make -C mdview build`. Its generated `bin/` directory is gitignored.
 
 ```
 workflow/

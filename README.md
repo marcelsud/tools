@@ -1,5 +1,24 @@
 # omp custom tools
 
+## `mdview` — Markdown viewer and browser editor
+
+A standalone Go CLI that serves one Markdown file at a loopback URL. It includes
+syntax highlighting, offline Mermaid diagrams, and browser editing with revision
+checks and atomic saves. Use `--read-only` to disable editing or `--watch` to emit
+JSON save events for a waiting agent.
+
+Requires Go 1.25 or newer. Build and install independently of omp:
+
+```sh
+make -C mdview install                  # installs to ~/.local/bin
+mdview /absolute/path/to/document.md
+mdview --watch /absolute/path/to/document.md
+```
+
+Open the printed URL in your browser. See [mdview/README.md](mdview/README.md) for
+editing, diagrams, and agent instructions. Run `make -C mdview check` to verify
+the tool (also requires Node.js).
+
 ## `viewdiff` — local Git diff viewer
 
 A standalone Go CLI for reviewing branch, working-tree, and staged diffs in a
