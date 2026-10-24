@@ -64,6 +64,7 @@ function viewer(layout = "split") {
       querySelector(selector) { if (!elements.has(selector)) elements.set(selector, new Element("div")); return elements.get(selector); },
     },
   });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "web/notes.js"), "utf8"), context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "web/app.js"), "utf8"), context);
   context.testLayout = layout;
   vm.runInContext("state.layout = testLayout", context);
