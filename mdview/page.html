@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} · mdview</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #f7f8fa; --paper: #fff; --text: #202630; --muted: #626e7e; --line: #e2e6eb; --code: #f2f4f7; --link: #1763c0; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #14171d; --paper: #1b2028; --text: #e1e7ef; --muted: #9aa8b9; --line: #343c49; --code: #242c37; --link: #86b9ff; } }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; padding: 40px 24px 80px; background: var(--bg); color: var(--text); font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 960px; margin: auto; padding: 36px 48px 48px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
+    header { padding-bottom: 20px; margin-bottom: 32px; border-bottom: 1px solid var(--line); }
+    .filename { font-size: 14px; font-weight: 650; }
+    .editor-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .editor-toolbar button { padding: 7px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+    .editor-toolbar button[data-save] { color: var(--link); font-weight: 650; }
+    .editor-toolbar [role="status"] { color: var(--muted); font-size: 13px; }
+    .editor-toolbar [data-error="true"] { color: #d54c4c; }
+    #markdown-editor { width: 100%; min-height: 65vh; resize: vertical; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--text); font: 14px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
+    #markdown-editor:focus { outline: 2px solid var(--link); outline-offset: 2px; }
+    @media print { .editor-toolbar, #markdown-editor { display: none !important; } }
+    .source { margin-top: 4px; color: var(--muted); font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    article > :first-child { margin-top: 0; }
+    h1, h2, h3, h4 { line-height: 1.3; margin: 1.6em 0 .65em; scroll-margin-top: 24px; }
+    h1 { font-size: 2em; letter-spacing: -.025em; }
+    h2 { padding-bottom: .35em; border-bottom: 1px solid var(--line); font-size: 1.5em; }
+    h3 { font-size: 1.2em; }
+    p, ul, ol, pre, blockquote, table { margin: 0 0 1.1em; }
+    li { margin: .3em 0; }
+    li > p { margin-bottom: .4em; }
+    a { color: var(--link); text-underline-offset: 3px; overflow-wrap: anywhere; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .87em; }
+    code { padding: .15em .35em; background: var(--code); border-radius: 4px; overflow-wrap: anywhere; }
+    pre { padding: 18px 20px; background: var(--code); border: 1px solid var(--line); border-radius: 8px; overflow: auto; line-height: 1.6; }
+    pre code { padding: 0; background: transparent; font-size: inherit; overflow-wrap: normal; }
+    blockquote { margin-left: 0; padding: .2em 1em; color: var(--muted); border-left: 3px solid var(--link); }
+    blockquote > :last-child { margin-bottom: 0; }
+    table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: .94em; }
+    th, td { padding: 10px 14px; text-align: left; vertical-align: top; border: 1px solid var(--line); }
+    th { background: var(--code); font-weight: 650; }
+    hr { margin: 2em 0; border: 0; border-top: 1px solid var(--line); }
+    img { max-width: 100%; height: auto; }
+    input[type="checkbox"] { accent-color: var(--link); }
+    [hidden] { display: none !important; }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
+    button:disabled { opacity: .5; cursor: default; }
+    .diagram-card { margin: 0 0 1.1em; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .diagram-toolbar, .diagram-actions, .diagram-modal-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .diagram-toolbar { justify-content: space-between; padding: 8px 12px; background: var(--code); border-bottom: 1px solid var(--line); }
+    .diagram-toolbar [role="tablist"] { display: flex; gap: 4px; }
+    .diagram-toolbar button, .diagram-modal-toolbar button { padding: 6px 10px; border: 1px solid transparent; background: transparent; border-radius: 5px; font-size: 13px; }
+    .diagram-toolbar button:hover, .diagram-modal-toolbar button:hover { border-color: var(--line); background: var(--paper); }
+    .diagram-toolbar [aria-selected="true"] { background: var(--paper); border-color: var(--line); color: var(--link); font-weight: 650; }
+    .diagram-preview { padding: 24px; overflow: auto; min-height: 100px; text-align: center; }
+    .diagram-canvas, .diagram-modal-canvas {
+      --pele-bg: var(--paper);
+      --pele-fg: var(--text);
+      --pele-muted: var(--muted);
+      --pele-line: var(--text);
+      --pele-surface: var(--code);
+      --pele-surface-alt: var(--bg);
+      --pele-border: var(--line);
+      --pele-accent: var(--link);
+    }
+    .diagram-canvas svg { display: block; margin: auto; max-width: 100%; height: auto; }
+    .diagram-status { color: var(--muted); font-size: 14px; }
+    .diagram-code pre { margin: 0; border: 0; border-radius: 0; }
+    .diagram-feedback { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    body.diagram-modal-open { overflow: hidden; }
+    .diagram-modal { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; color: var(--text); background: var(--paper); }
+    .diagram-modal[open] { display: flex; flex-direction: column; }
+    .diagram-modal::backdrop { background: #0009; }
+    .diagram-modal-toolbar { flex-shrink: 0; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--code); }
+    .diagram-modal-toolbar h2 { margin: 0 auto 0 0; padding: 0; border: 0; font-size: 16px; }
+    .diagram-modal-viewport { flex: 1; overflow: auto; padding: 32px; }
+    .diagram-modal-canvas { margin: auto; }
+    .diagram-modal-canvas svg { display: block; width: 100%; height: 100%; max-width: none !important; }
+    .diagram-zoom-label { min-width: 4em; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+    @media (max-width: 640px) { body { padding: 12px; } main { padding: 24px 20px; border-radius: 8px; } h1 { font-size: 1.7em; } }
+    @media print { body { padding: 0; background: white; } main { max-width: none; padding: 0; border: 0; } pre { white-space: pre-wrap; } a { color: inherit; } }
+    @media print { .diagram-toolbar, .diagram-modal { display: none !important; } .diagram-preview[hidden] { display: block !important; } .diagram-code { display: none !important; } }
+    {{.HighlightCSS}}
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="filename">{{.Title}}</div><div class="source">{{.Source}}</div>
+      {{if .EditToken}}
+      <div class="editor-toolbar" data-mdview-editor data-token="{{.EditToken}}">
+        <button type="button" data-edit>Edit</button>
+        <button type="button" data-save hidden disabled>Save</button>
+        <button type="button" data-cancel hidden>Cancel</button>
+        <span role="status" aria-live="polite"></span>
+      </div>
+      {{end}}
+    </header>
+    {{if .EditToken}}<textarea id="markdown-editor" aria-label="Markdown source" spellcheck="false" hidden></textarea>{{end}}
+    <article>{{.Body}}</article>
+  </main>
+  {{if .EditToken}}<script defer src="/_mdview/editor.js"></script>{{end}}
+  {{if .Mermaid}}
+  <dialog class="diagram-modal" aria-labelledby="diagram-modal-title">
+    <div class="diagram-modal-toolbar">
+      <h2 id="diagram-modal-title">Diagram</h2>
+      <button type="button" data-zoom="out" aria-label="Zoom out">−</button>
+      <output class="diagram-zoom-label" aria-label="Zoom level">100%</output>
+      <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+      <button type="button" data-zoom="fit">Fit</button>
+      <button type="button" data-close aria-label="Close full-screen diagram">✕ Close</button>
+    </div>
+    <div class="diagram-modal-viewport" tabindex="0" aria-label="Diagram, scroll to explore"><div class="diagram-modal-canvas"></div></div>
+  </dialog>
+  <script defer src="/_mdview/pele.global.js"></script>
+  <script defer src="/_mdview/diagrams.js"></script>
+  {{end}}
+</body>
+</html>
