@@ -25,6 +25,26 @@ persist across launches. The server binds to `127.0.0.1`; Ctrl-C stops it.
 
 ## Review notes
 
+Select a code snippet, or click a line number and Shift-click another to select
+an inclusive range. Choose **Add note** to open the editor, then save your note.
+Selections stay within one file and one side of the diff; expand hidden context
+before selecting across it. Deleted lines and both split/unified layouts work.
+
+The **Notes** panel collects your drafts. Edit, delete, jump to the source, or
+**Copy all notes** as Markdown to paste into your agent. **Clear all notes** removes
+all browser drafts at once. The export includes the
+repository, comparison, file, old/new line range, original code excerpt, and your
+feedback. If the clipboard is unavailable, a dialog provides selectable Markdown.
+Cmd/Ctrl+Enter saves a note; Escape cancels the editor.
+
+Drafts survive refresh in the current viewer tab. A new viewer launch starts
+without those drafts. If the diff changes, the original code excerpt is retained
+and the note is marked stale; its source highlight and jump are disabled. Drafts
+from another comparison remain in the list with their original context. Browser
+storage is best effort; if blocked or full, drafts remain in memory until reload.
+
+### Notes supplied from the command line
+
 Supply repeatable `-c` arguments before or after the comparison references:
 
 ```sh

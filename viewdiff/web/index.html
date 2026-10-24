@@ -8,13 +8,14 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2324292f'/%3E%3Cpath d='M8 11h7M11.5 7.5v7M18 21h7' stroke='%23fff' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
   <script src="preferences.js" defer></script>
+  <script src="notes.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
     <div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h6M8 4v6M14 17h6"/></svg><strong>viewdiff</strong><span class="local-badge">LOCAL</span></div>
     <div id="repo-name" class="repo-name"></div>
-    <div class="header-actions"><span class="readonly">Read-only</span><button id="theme" class="icon-button" title="Toggle light/dark theme" aria-label="Toggle light/dark theme">◐</button><button id="refresh" class="button">Refresh</button></div>
+    <div class="header-actions"><span class="readonly">Read-only</span><button id="notes-toggle" class="button" aria-expanded="false" aria-controls="notes-panel">Notes (0)</button><button id="theme" class="icon-button" title="Toggle light/dark theme" aria-label="Toggle light/dark theme">◐</button><button id="refresh" class="button">Refresh</button></div>
   </header>
   <section class="comparison" aria-label="Comparison settings">
     <div class="comparison-controls">
@@ -30,9 +31,33 @@
       <div class="sidebar-heading"><strong>Changed files</strong><span id="review-count"></span></div>
       <input id="filter" class="filter" type="search" placeholder="Filter files…" aria-label="Filter files">
       <nav id="file-tree" class="file-tree"></nav>
-      <div class="sidebar-footer">↑ / ↓ files · / filter · U unified · S split</div>
+      <div class="sidebar-footer">↑ / ↓ files · / filter · U unified · S split<br>Click / Shift-click line numbers to add a note</div>
     </aside>
     <section id="diffs" class="diffs" aria-label="File diffs" aria-live="polite"></section>
   </main>
+  <button id="selection-note" class="button selection-note" hidden>Add note</button>
+  <aside id="notes-panel" class="notes-panel" aria-label="Your review notes" hidden>
+    <div class="notes-heading"><h2>Your notes</h2><button id="notes-close" class="button" aria-label="Close notes">Close</button></div>
+    <p class="notes-help">Drafts stay in this viewer tab and survive refresh. Copy them to share with your agent.</p>
+    <div class="note-actions"><button id="notes-copy" class="button" disabled>Copy all notes</button><button id="notes-clear" class="button" disabled>Clear all notes</button></div>
+    <p id="notes-status" class="notes-status" role="status" aria-live="polite"></p>
+    <div id="notes-list"></div>
+  </aside>
+  <dialog id="note-dialog" class="note-dialog" aria-labelledby="note-title">
+    <form id="note-form">
+      <h2 id="note-title">Review note</h2>
+      <p id="note-location" class="note-editor-location"></p>
+      <pre class="note-code-preview"><code id="note-snippet"></code></pre>
+      <label for="note-text">Your note</label>
+      <textarea id="note-text" rows="5" required placeholder="What would you like your agent to change or investigate?"></textarea>
+      <div class="note-dialog-actions"><span>⌘ / Ctrl + Enter to save · Esc to cancel</span><button id="note-cancel" type="button" class="button">Cancel</button><button id="note-save" type="submit" class="button primary-button">Add note</button></div>
+    </form>
+  </dialog>
+  <dialog id="copy-dialog" class="note-dialog" aria-labelledby="copy-title">
+    <h2 id="copy-title">Copy review notes</h2>
+    <p>Copy the selected Markdown and paste it into your agent.</p>
+    <textarea id="copy-text" rows="15" readonly aria-label="Review notes as Markdown"></textarea>
+    <div class="note-dialog-actions"><button id="copy-close" class="button">Close</button></div>
+  </dialog>
 </body>
 </html>

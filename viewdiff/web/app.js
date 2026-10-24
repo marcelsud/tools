@@ -1,6 +1,7 @@
 const $ = (selector) => document.querySelector(selector);
 const preferences = new ViewdiffPreferences();
 const state = { data: null, layout: preferences.get("layout", "split"), files: new Map(), reviewed: {}, request: 0, controller: null, active: null };
+let reviewNotes;
 const statusNames = { A: "Added", D: "Deleted", M: "Modified", R: "Renamed", C: "Copied", T: "Type changed", U: "Unmerged", "?": "Untracked" };
 
 function node(tag, attrs = {}, text) {
@@ -62,6 +63,7 @@ async function load(initial = false) {
 
 function render() {
   if (!state.data) return;
+  reviewNotes?.clearSelection();
   const diffs = $("#diffs");
   diffs.replaceChildren();
   if (!state.data.files.length) {
@@ -72,7 +74,10 @@ function render() {
   for (const file of state.data.files) diffs.append(fileCard(file));
   setLayoutButtons();
   filterFiles();
+  reviewNotes?.renderList();
 }
+
+function fileComments(file) { return [...(file.comments || []), ...(reviewNotes?.comments(file) || [])]; }
 
 function fileCard(file) {
   const memo = state.files.get(file.id);
@@ -100,8 +105,9 @@ function fileCard(file) {
   });
   viewed.append(checkbox, document.createTextNode("Viewed"));
   header.append(collapse, node("span", { class: `file-status status-${file.status}`, title: statusNames[file.status] || file.status }, file.status), title, stats, viewed);
-  if (file.comments?.length) {
-    header.insertBefore(node("span", { class: "comment-count", title: "Local review notes" }, `${file.comments.length} note${file.comments.length === 1 ? "" : "s"}`), stats);
+  const comments = fileComments(file);
+  if (comments.length) {
+    header.insertBefore(node("span", { class: "comment-count", title: "Local review notes" }, `${comments.length} note${comments.length === 1 ? "" : "s"}`), stats);
   }
   const body = node("div", { class: "file-body" });
   card.append(header, body);
@@ -171,7 +177,7 @@ function reviewNote(comment, visible = true) {
 function annotateRows(file, body) {
   const rows = [...body.querySelectorAll("tr[data-old-line], tr[data-new-line]")];
   const firstRow = body.firstChild;
-  for (const comment of file.comments || []) {
+  for (const comment of fileComments(file)) {
     const matching = comment.stale ? [] : rows.filter((row) => {
       const number = Number(row.getAttribute(`data-${comment.side}-line`));
       return number >= comment.start && number <= comment.end;
@@ -231,7 +237,7 @@ function renderBody(file, target) {
   if (!target) return;
   target.replaceChildren();
   if (!file.hunks.length) {
-    for (const comment of file.comments || []) target.append(reviewNote(comment, false));
+    for (const comment of fileComments(file)) target.append(reviewNote(comment, false));
     target.append(node("div", { class: "file-message" }, file.message || (file.status === "R" ? "File renamed without content changes" : "No textual changes")));
     return;
   }
@@ -356,7 +362,7 @@ $("#theme").addEventListener("click", () => {
   document.documentElement.dataset.theme = theme; preferences.set("theme", theme);
 });
 document.addEventListener("keydown", (event) => {
-  if (event.metaKey || event.ctrlKey || event.altKey || /INPUT|SELECT|TEXTAREA/.test(event.target.tagName)) return;
+  if (event.metaKey || event.ctrlKey || event.altKey || event.target.closest?.("dialog") || /INPUT|SELECT|TEXTAREA/.test(event.target.tagName)) return;
   if (event.key === "/") { event.preventDefault(); $("#filter").focus(); }
   else if (event.key.toLowerCase() === "u") layout("unified");
   else if (event.key.toLowerCase() === "s") layout("split");
@@ -365,6 +371,23 @@ document.addEventListener("keydown", (event) => {
     const next = event.key === "ArrowDown" ? Math.min(index + 1, files.length - 1) : Math.max(index - 1, 0);
     if (files[next]) activate(files[next].id);
   }
+});
+reviewNotes = new ViewdiffNotes.Controller({
+  data: () => state.data,
+  render,
+  jump: async (note) => {
+    const file = state.data.files.find((file) => file.path === note.path);
+    if (!file) throw new Error("This file is no longer in the diff.");
+    $("#filter").value = "";
+    const memo = state.files.get(file.id);
+    memo.collapsed = false;
+    render();
+    const selector = `#file-${file.id} tr[data-${note.side}-line="${note.start}"]`;
+    if (!$(selector)) { await context(file); memo.full = true; renderBody(file, $(`#file-${file.id} .file-body`)); }
+    const target = $(selector);
+    if (!target) throw new Error("Expand the context to locate this note.");
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+  },
 });
 applyPreferences();
 preferences.load().then(() => { applyPreferences(); load(true); });

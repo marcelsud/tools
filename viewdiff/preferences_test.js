@@ -86,7 +86,10 @@ test("toolbar restores preferences and persists mouse and keyboard changes", asy
   const documentEvents = {};
   const document = {
     documentElement: { dataset: {} },
-    addEventListener(name, callback) { documentEvents[name] = callback; },
+    addEventListener(name, callback) {
+      const previous = documentEvents[name];
+      documentEvents[name] = (event) => { previous?.(event); callback(event); };
+    },
     querySelector(selector) {
       if (!elements.has(selector)) {
         const classes = new Set();
@@ -114,6 +117,7 @@ test("toolbar restores preferences and persists mouse and keyboard changes", asy
       async load() {}
     },
   });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "web/notes.js"), "utf8"), context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "web/app.js"), "utf8"), context);
   await new Promise(setImmediate);
   assert.equal(document.documentElement.dataset.theme, "dark");
